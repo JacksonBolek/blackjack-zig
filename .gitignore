@@ -1,0 +1,5 @@
+# Zig build aritfacts
+zig-out
+
+# Zig cache
+zig-cache
