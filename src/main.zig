@@ -3,7 +3,7 @@ const RNDGEN = std.rand.DefaultPrng;
 const print = std.debug.print;
 const eql = std.mem.eql;
 
-const suits = [_][]const u8{ "clubs", "diamonds", "hearts", "spades" };
+const suits = [_][]const u8{ "Clubs", "Diamonds", "Hearts", "Spades" };
 const card_types = [_][]const u8{ "Ace", "2", "3", "4", "5", "6", "7", "8", "9", "10", "Jack", "Queen", "King" };
 
 const UserInputError = error{
@@ -100,10 +100,10 @@ const Hand = struct {
 
 const Player = struct {
     name: []const u8,
-    money: u64,
+    money: u32,
     hand: Hand,
 
-    pub fn init(name: []const u8, money: u64) Player {
+    pub fn init(name: []const u8, money: u32) Player {
         return Player{
             .name = name,
             .money = money,
@@ -123,11 +123,28 @@ const Player = struct {
         self.hand.current_card_index = 0;
     }
 
+    pub fn get_hand_total(self: *Player) u32 {
+        var hand_total: u32 = 0;
+        const ace_count = 0;
+        _ = ace_count;
+
+        for (self.hand.cards[0..self.hand.current_card_index]) |card| {
+            if (card) |c| {
+                hand_total += c.value;
+            }
+        }
+        return hand_total;
+    }
+
     pub fn print_hand(self: *Player) void {
+        // Check for cards in the players hand
         if (self.hand.current_card_index == 0) {
             print("\nNo Cards in hand\n", .{});
         } else {
             std.debug.print("\n{s} has cards:\n", .{self.name});
+            // Loop through each card and its index
+            // print out the index and its card
+            // sum of the value of the cards in his hand while accounts for if there is an ace or not
             for (self.hand.cards[0..self.hand.current_card_index], 0..) |card, i| {
                 if (card) |c| {
                     std.debug.print("{d}: {s} of {s}\n", .{ i + 1, c.type, c.suit });
@@ -135,6 +152,7 @@ const Player = struct {
                     std.debug.print("{d}: No card\n", .{i});
                 }
             }
+            print("Your hand total: {d}\n\n", .{get_hand_total(self)});
         }
     }
 };
@@ -209,15 +227,74 @@ pub fn main() !void {
                     },
                 }
             }
-            print("What is your name - ", .{});
-            const player_name = try ask_user_str(30, allocator);
+        }
+        print("What is your name?\n", .{});
+        const player_name = try ask_user_str(30, allocator);
 
-            print("\nHow much money would you like to put in your wallet?\n", .{});
-            const player_wallet = try ask_user_int(10, allocator);
+        print("\nHow much money would you like to put in your wallet?\n", .{});
+        const player_wallet = try ask_user_int(10, allocator);
 
-            const player1 = Player.init(player_name[0 .. player_name.len - 1], player_wallet);
-            _ = player1;
-            print("Game Start", .{});
+        var player1 = Player.init(player_name[0 .. player_name.len - 1], player_wallet);
+        var dealer = Player.init("Dealer", 1000000000);
+        print("\n\nGame Start", .{});
+
+        while (player1.money > 0) {
+            //TODO Add check to make sure the player cannot bet more than he has
+            print("\nWhat would you like to bet?\n$5 - (1)  $10 - (2)  $25 - (3)  $100 - (4)  Custom - (5)\n", .{});
+            var bet_amt = try ask_user_int(20, allocator);
+            switch (bet_amt) {
+                1 => {
+                    print("\nYou've bet: $5", .{});
+                },
+                2 => {
+                    print("\nYou've bet: $10", .{});
+                },
+                3 => {
+                    print("\nYou've bet: $25", .{});
+                },
+                4 => {
+                    print("\nYou've bet: $100", .{});
+                },
+                5 => {
+                    print("\nYou've bet: {d}", .{bet_amt});
+                },
+                else => {
+                    print("\nNot a valid input", .{});
+                },
+            }
+            player1.draw_card(&deck);
+            player1.draw_card(&deck);
+            player1.print_hand();
+
+            dealer.draw_card(&deck);
+            dealer.draw_card(&deck);
+            dealer.print_hand();
+
+            while (player1.get_hand_total() < 22) {
+                //TODO add the ability to split a hand
+                print("\nWhat would you like to do?\nHit - (1)  Double Down - (2)  Stand - (3)  Surrender - (4)\n", .{});
+
+                // Get user action
+                const action = try ask_user_int(20, allocator);
+                switch (action) {
+                    1 => {
+                        player1.draw_card(&deck);
+                        player1.print_hand();
+                    },
+                    2 => {
+                        bet_amt = bet_amt * 2;
+                    },
+                    3 => {
+                        print("\nYou've bet: $25", .{});
+                    },
+                    4 => {
+                        print("\nYou've bet: $100", .{});
+                    },
+                    else => {
+                        print("\nNot a valid input", .{});
+                    },
+                }
+            }
         }
     }
     deck.deinit(allocator);
