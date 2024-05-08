@@ -14,6 +14,7 @@ const UserInputError = error{
 const Card = struct {
     suit: []const u8,
     type: []const u8,
+    value: u8,
     shown: bool,
 };
 
@@ -30,9 +31,16 @@ const Deck = struct {
         while (i < number_of_decks) : (i += 1) {
             for (suits) |suit| {
                 for (card_types) |c_type| {
+                    const c_value = if (eql(u8, "Ace", c_type))
+                        1
+                    else if (eql(u8, "Jack", c_type) or eql(u8, "Queen", c_type) or eql(u8, "King", c_type))
+                        10
+                    else
+                        try std.fmt.parseInt(u8, c_type, 10);
                     cards[index] = Card{
                         .suit = suit,
                         .type = c_type,
+                        .value = c_value,
                         .shown = false,
                     };
                     index += 1;
@@ -209,8 +217,7 @@ pub fn main() !void {
 
             const player1 = Player.init(player_name[0 .. player_name.len - 1], player_wallet);
             _ = player1;
-
-            print("You are in the game loop", .{});
+            print("Game Start", .{});
         }
     }
     deck.deinit(allocator);
