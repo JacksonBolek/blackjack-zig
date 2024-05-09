@@ -24,8 +24,9 @@ const Deck = struct {
     number_of_decks: u8,
     current_card_index: u32,
     cards: []Card,
+    prng: std.Random.DefaultPrng,
 
-    pub fn init(allocator: std.mem.Allocator, number_of_decks: u8) !Deck {
+    pub fn init(allocator: std.mem.Allocator, number_of_decks: u8, prng: std.Random.DefaultPrng) !Deck {
         var cards = try allocator.alloc(Card, 52 * number_of_decks);
         var index: usize = 0;
         var i: usize = 0;
@@ -54,11 +55,7 @@ const Deck = struct {
         //     std.debug.print("Card {d}: {s}, {s}\n", .{ z + 1, card.suit, card.type });
         // }
 
-        return Deck{
-            .cards = cards,
-            .current_card_index = 0,
-            .number_of_decks = number_of_decks,
-        };
+        return Deck{ .cards = cards, .current_card_index = 0, .number_of_decks = number_of_decks, .prng = prng };
     }
 
     pub fn deinit(self: *Deck, allocator: std.mem.Allocator) void {
@@ -66,11 +63,13 @@ const Deck = struct {
     }
 
     pub fn shuffle(self: *Deck) void {
-        var rnd = RNDGEN.init(0);
+
+        // var rnd = RNDGEN.init(0);
         var i = self.cards.len;
         while (i > 1) {
             i -= 1;
-            const j = rnd.random().int(u32) % i;
+            const j = self.prng.random().int(u32) % i;
+            // const j = rnd.random().int(u32) % i;
             const temp = self.cards[i];
             self.cards[i] = self.cards[j];
             self.cards[j] = temp;
@@ -127,12 +126,27 @@ const Player = struct {
 
     pub fn get_hand_total(self: *Player) u32 {
         var hand_total: u32 = 0;
-        const ace_count = 0;
-        _ = ace_count;
+        var ace_count: u8 = 0;
 
         for (self.hand.cards[0..self.hand.current_card_index]) |card| {
             if (card) |c| {
-                hand_total += c.value;
+                if (c.value == 1) {
+                    ace_count += 1;
+                } else {
+                    hand_total += c.value;
+                }
+            }
+        }
+        if (ace_count == 0) {
+            return hand_total;
+        }
+
+        var i: u8 = 0;
+        while (i < ace_count) : (i += 1) {
+            if (hand_total + 11 < 21) {
+                hand_total += 11;
+            } else {
+                hand_total += 1;
             }
         }
         return hand_total;
@@ -220,7 +234,18 @@ pub fn main() !void {
         _ = gpa.deinit();
     }
 
-    var deck = try Deck.init(allocator, 1);
+    // Uncomment this next line if you need to debug the cards so their orders are fixed each round
+    // const prng = std.Random.DefaultPrng(0);
+
+    // Comment this line out if you need to remove the randome seed for the random number generator
+    const prng = std.Random.DefaultPrng.init(blk: {
+        var seed: u64 = undefined;
+        try std.posix.getrandom(std.mem.asBytes(&seed));
+        break :blk seed;
+    });
+
+    const num_decks: u8 = 2;
+    var deck = try Deck.init(allocator, num_decks, prng);
     deck.shuffle();
 
     const game = true;
@@ -237,7 +262,6 @@ pub fn main() !void {
                     print("\n{s}\nInitialzing Game!\n{s}\n", .{ MESSAGEDASH, MESSAGEDASH });
                     game_menu = false;
                 } else if (eql(u8, "e", start_game[0 .. start_game.len - 1])) {
-                    //TODO Implement closing the program on exit (e)
                     print("\nExiting the game. Goodbye.\n\n", .{});
                     std.process.exit(200);
                 } else {
@@ -265,7 +289,6 @@ pub fn main() !void {
         print("\n\nGame Start\n\n", .{});
 
         while (player1.money > 0) {
-            //TODO Add better visual seperation between actions and rounds so the user can follow easier in the terminal
             print("Money: {d}", .{player1.money});
             print("\nWhat would you like to bet?\n$5 - (1)  $10 - (2)  $25 - (3)  $100 - (4)  Custom - (5)\n", .{});
             const bet_decision = try ask_user_int(20, allocator);
@@ -307,6 +330,7 @@ pub fn main() !void {
                     break :blk r;
                 },
                 5 => blk: {
+                    //TODO allow for custom bets
                     const r: u32 = bet_decision;
                     if (r > player1.money) {
                         print("\nYou don't have enough money to make this bet\n", .{});
@@ -328,6 +352,7 @@ pub fn main() !void {
             player1.draw_card(&deck);
             player1.draw_card(&deck);
             player1.print_hand();
+            player1.money -= bet_amt;
 
             while (player1.get_hand_total() < 22) {
                 //TODO add the ability to split a hand
@@ -343,8 +368,12 @@ pub fn main() !void {
                         player1.print_hand();
                     },
                     2 => {
-                        //TODO impl double down
+                        player1.money -= bet_amt;
                         bet_amt = bet_amt * 2;
+                        player1.draw_card(&deck);
+                        dealer.print_second_card();
+                        player1.print_hand();
+                        break;
                     },
                     3 => {
                         print("You've choosen to stand\n\n", .{});
@@ -352,6 +381,7 @@ pub fn main() !void {
                     },
                     4 => {
                         print("\nYou've choosen to Surrender", .{});
+                        player1.money += bet_amt / 2;
                         break;
                     },
                     else => {
