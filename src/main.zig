@@ -240,35 +240,48 @@ pub fn main() !void {
 
         while (player1.money > 0) {
             //TODO Add check to make sure the player cannot bet more than he has
+            print("Money: {d}", .{player1.money});
             print("\nWhat would you like to bet?\n$5 - (1)  $10 - (2)  $25 - (3)  $100 - (4)  Custom - (5)\n", .{});
-            var bet_amt = try ask_user_int(20, allocator);
-            switch (bet_amt) {
-                1 => {
-                    print("\nYou've bet: $5", .{});
+            const bet_decision = try ask_user_int(20, allocator);
+            var bet_amt: u32 = switch (bet_decision) {
+                1 => blk: {
+                    print("\nYou've bet: $5\n", .{});
+                    const r: u32 = 5;
+                    break :blk r;
                 },
-                2 => {
-                    print("\nYou've bet: $10", .{});
+                2 => blk: {
+                    print("\nYou've bet: $10\n", .{});
+                    const r: u32 = 10;
+                    break :blk r;
                 },
-                3 => {
-                    print("\nYou've bet: $25", .{});
+                3 => blk: {
+                    print("\nYou've bet: $25\n", .{});
+                    const r: u32 = 25;
+                    break :blk r;
                 },
-                4 => {
-                    print("\nYou've bet: $100", .{});
+                4 => blk: {
+                    print("\nYou've bet: $100\n", .{});
+                    const r: u32 = 100;
+                    break :blk r;
                 },
-                5 => {
-                    print("\nYou've bet: {d}", .{bet_amt});
+                5 => blk: {
+                    print("\nYou've bet: {d}\n", .{bet_decision});
+                    const r: u32 = bet_decision;
+                    break :blk r;
                 },
-                else => {
-                    print("\nNot a valid input", .{});
+                else => blk: {
+                    print("\nNot a valid input\n", .{});
+                    const r: u32 = 0;
+                    break :blk r;
                 },
-            }
-            player1.draw_card(&deck);
-            player1.draw_card(&deck);
-            player1.print_hand();
-
+            };
             dealer.draw_card(&deck);
             dealer.draw_card(&deck);
             dealer.print_hand();
+
+            player1.draw_card(&deck);
+            player1.draw_card(&deck);
+            player1.print_hand();
 
             while (player1.get_hand_total() < 22) {
                 //TODO add the ability to split a hand
@@ -278,21 +291,50 @@ pub fn main() !void {
                 const action = try ask_user_int(20, allocator);
                 switch (action) {
                     1 => {
+                        print("You've choosen to hit.\n", .{});
                         player1.draw_card(&deck);
+                        dealer.print_hand();
                         player1.print_hand();
                     },
                     2 => {
+                        //TODO impl double down
                         bet_amt = bet_amt * 2;
                     },
                     3 => {
-                        print("\nYou've bet: $25", .{});
+                        print("You've choosen to stand\n", .{});
+                        break;
                     },
                     4 => {
-                        print("\nYou've bet: $100", .{});
+                        print("\nYou've choosen to Surrender", .{});
+                        break;
                     },
                     else => {
                         print("\nNot a valid input", .{});
                     },
+                }
+            }
+
+            // If the player busts after breaking out of his turn
+            // They immediately lose all bets made on that hand and the players round ends
+            if (player1.get_hand_total() > 21) {
+                print("You've bust\n", .{});
+                player1.money -= bet_amt;
+                player1.clear_hand();
+                dealer.clear_hand();
+                continue;
+            }
+
+            // If the player doesn't bust then the dealer starts his turn
+            while (dealer.get_hand_total() < 22) {
+                const d_hand_total: u32 = dealer.get_hand_total();
+                if (d_hand_total <= 16) {
+                    dealer.draw_card(&deck);
+                    dealer.print_hand();
+                } else if (d_hand_total > 21) {
+                    print("Dealer bust! You Win!", .{});
+                    break;
+                } else {
+                    break;
                 }
             }
         }
