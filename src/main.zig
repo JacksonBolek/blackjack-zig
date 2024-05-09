@@ -3,6 +3,8 @@ const RNDGEN = std.rand.DefaultPrng;
 const print = std.debug.print;
 const eql = std.mem.eql;
 
+const MESSAGEDASH: []const u8 = "-------------------------------------------------";
+
 const suits = [_][]const u8{ "Clubs", "Diamonds", "Hearts", "Spades" };
 const card_types = [_][]const u8{ "Ace", "2", "3", "4", "5", "6", "7", "8", "9", "10", "Jack", "Queen", "King" };
 
@@ -152,7 +154,30 @@ const Player = struct {
                     std.debug.print("{d}: No card\n", .{i});
                 }
             }
-            print("Your hand total: {d}\n\n", .{get_hand_total(self)});
+            print("{s} hand total: {d}\n\n", .{ self.name, get_hand_total(self) });
+        }
+    }
+
+    pub fn print_second_card(self: *Player) void {
+        // Check for cards in the players hand
+        if (self.hand.current_card_index == 0) {
+            print("\nNo Cards in hand\n", .{});
+        } else {
+            std.debug.print("\n{s} has cards:\n", .{self.name});
+            // Loop through each card and its index
+            // print out the index and its card
+            // sum of the value of the cards in his hand while accounts for if there is an ace or not
+            for (self.hand.cards[0..self.hand.current_card_index], 0..) |card, i| {
+                if (card) |c| {
+                    if (i == 0) {
+                        print("{d}: ?\n", .{i + 1});
+                    } else {
+                        print("{d}: {s} of {s}\n", .{ i + 1, c.type, c.suit });
+                    }
+                } else {
+                    std.debug.print("{d}: No card\n", .{i});
+                }
+            }
         }
     }
 };
@@ -203,17 +228,18 @@ pub fn main() !void {
 
     while (game) {
         while (game_menu) {
-            try stdout.print("\n\nWelcome to Blackjack\nStart - (s) Exit - (e)\n\n", .{});
+            try stdout.print("\n\n{s}\nWelcome to Blackjack\n{s}\nStart - (s) Exit - (e)\n\n", .{ MESSAGEDASH, MESSAGEDASH });
 
             const usr_input = ask_user_str(3, allocator);
 
             if (usr_input) |start_game| {
                 if (eql(u8, "s", start_game[0 .. start_game.len - 1])) {
-                    print("Initialzing Game!\n\n", .{});
+                    print("\n{s}\nInitialzing Game!\n{s}\n", .{ MESSAGEDASH, MESSAGEDASH });
                     game_menu = false;
                 } else if (eql(u8, "e", start_game[0 .. start_game.len - 1])) {
                     //TODO Implement closing the program on exit (e)
-                    print("Exit the game", .{});
+                    print("\nExiting the game. Goodbye.\n\n", .{});
+                    std.process.exit(200);
                 } else {
                     print("\nNot a valid selection", .{});
                 }
@@ -235,39 +261,58 @@ pub fn main() !void {
         const player_wallet = try ask_user_int(10, allocator);
 
         var player1 = Player.init(player_name[0 .. player_name.len - 1], player_wallet);
-        var dealer = Player.init("Dealer", 1000000000);
-        print("\n\nGame Start", .{});
+        var dealer = Player.init("Dealer", 1_000_000_000);
+        print("\n\nGame Start\n\n", .{});
 
         while (player1.money > 0) {
-            //TODO Add check to make sure the player cannot bet more than he has
             //TODO Add better visual seperation between actions and rounds so the user can follow easier in the terminal
             print("Money: {d}", .{player1.money});
             print("\nWhat would you like to bet?\n$5 - (1)  $10 - (2)  $25 - (3)  $100 - (4)  Custom - (5)\n", .{});
             const bet_decision = try ask_user_int(20, allocator);
             var bet_amt: u32 = switch (bet_decision) {
                 1 => blk: {
-                    print("\nYou've bet: $5\n", .{});
                     const r: u32 = 5;
+                    if (r > player1.money) {
+                        print("\nYou don't have enough money to make this bet\n", .{});
+                        continue;
+                    }
+                    print("\nYou've bet: $5\n", .{});
                     break :blk r;
                 },
                 2 => blk: {
-                    print("\nYou've bet: $10\n", .{});
                     const r: u32 = 10;
+                    if (r > player1.money) {
+                        print("\nYou don't have enough money to make this bet\n", .{});
+                        continue;
+                    }
+                    print("\nYou've bet: $10\n", .{});
                     break :blk r;
                 },
                 3 => blk: {
-                    print("\nYou've bet: $25\n", .{});
                     const r: u32 = 25;
+                    if (r > player1.money) {
+                        print("\nYou don't have enough money to make this bet\n", .{});
+                        continue;
+                    }
+                    print("\nYou've bet: $25\n", .{});
                     break :blk r;
                 },
                 4 => blk: {
-                    print("\nYou've bet: $100\n", .{});
                     const r: u32 = 100;
+                    if (r > player1.money) {
+                        print("\nYou don't have enough money to make this bet\n", .{});
+                        continue;
+                    }
+                    print("\nYou've bet: $100\n", .{});
                     break :blk r;
                 },
                 5 => blk: {
-                    print("\nYou've bet: {d}\n", .{bet_decision});
                     const r: u32 = bet_decision;
+                    if (r > player1.money) {
+                        print("\nYou don't have enough money to make this bet\n", .{});
+                        continue;
+                    }
+                    print("\nYou've bet: {d}\n", .{bet_decision});
                     break :blk r;
                 },
                 else => blk: {
@@ -278,7 +323,7 @@ pub fn main() !void {
             };
             dealer.draw_card(&deck);
             dealer.draw_card(&deck);
-            dealer.print_hand();
+            dealer.print_second_card();
 
             player1.draw_card(&deck);
             player1.draw_card(&deck);
@@ -294,7 +339,7 @@ pub fn main() !void {
                     1 => {
                         print("You've choosen to hit.\n", .{});
                         player1.draw_card(&deck);
-                        dealer.print_hand();
+                        dealer.print_second_card();
                         player1.print_hand();
                     },
                     2 => {
@@ -302,7 +347,7 @@ pub fn main() !void {
                         bet_amt = bet_amt * 2;
                     },
                     3 => {
-                        print("You've choosen to stand\n", .{});
+                        print("You've choosen to stand\n\n", .{});
                         break;
                     },
                     4 => {
@@ -315,28 +360,62 @@ pub fn main() !void {
                 }
             }
 
+            const p_hand_total: u32 = player1.get_hand_total();
+
             // If the player busts after breaking out of his turn
             // They immediately lose all bets made on that hand and the players round ends
-            if (player1.get_hand_total() > 21) {
-                print("You've bust\n", .{});
+            if (p_hand_total > 21) {
+                print("You've bust\n\n", .{});
                 player1.money -= bet_amt;
                 player1.clear_hand();
                 dealer.clear_hand();
                 continue;
             }
 
+            print("\n{s}\nDealer is taking his turn\n{s}\n", .{ MESSAGEDASH, MESSAGEDASH });
+            dealer.print_hand();
+
             // If the player doesn't bust then the dealer starts his turn
             while (dealer.get_hand_total() < 22) {
+                std.time.sleep(2_000_000_000);
                 const d_hand_total: u32 = dealer.get_hand_total();
                 if (d_hand_total <= 16) {
+                    print("Dealer hits\n", .{});
                     dealer.draw_card(&deck);
                     dealer.print_hand();
-                } else if (d_hand_total > 21) {
-                    print("Dealer bust! You Win!", .{});
-                    break;
                 } else {
                     break;
                 }
+            }
+
+            const d_hand_total: u32 = dealer.get_hand_total();
+
+            if (d_hand_total > 21) {
+                print("Dealer busts, you win!\n\n", .{});
+                player1.money += bet_amt * 2;
+                player1.clear_hand();
+                dealer.clear_hand();
+                continue;
+            }
+
+            if (p_hand_total > d_hand_total) {
+                print("You've won!\n", .{});
+                player1.money += bet_amt * 2;
+                player1.clear_hand();
+                dealer.clear_hand();
+                continue;
+            } else if (p_hand_total == d_hand_total) {
+                print("Push\n", .{});
+                player1.money += bet_amt;
+                player1.clear_hand();
+                dealer.clear_hand();
+                continue;
+            } else {
+                print("You've lost\n", .{});
+                player1.money -= bet_amt;
+                player1.clear_hand();
+                dealer.clear_hand();
+                continue;
             }
         }
     }
