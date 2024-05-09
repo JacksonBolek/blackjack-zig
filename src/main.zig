@@ -240,6 +240,7 @@ pub fn main() !void {
 
         while (player1.money > 0) {
             //TODO Add check to make sure the player cannot bet more than he has
+            //TODO Add better visual seperation between actions and rounds so the user can follow easier in the terminal
             print("Money: {d}", .{player1.money});
             print("\nWhat would you like to bet?\n$5 - (1)  $10 - (2)  $25 - (3)  $100 - (4)  Custom - (5)\n", .{});
             const bet_decision = try ask_user_int(20, allocator);
