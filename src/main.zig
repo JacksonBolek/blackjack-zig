@@ -286,7 +286,7 @@ pub fn main() !void {
 
         var player1 = Player.init(player_name[0 .. player_name.len - 1], player_wallet);
         var dealer = Player.init("Dealer", 1_000_000_000);
-        print("\n\nGame Start\n\n", .{});
+        print("\nGame Start\n\n", .{});
 
         while (player1.money > 0) {
             print("Money: {d}", .{player1.money});
@@ -296,7 +296,7 @@ pub fn main() !void {
                 1 => blk: {
                     const r: u32 = 5;
                     if (r > player1.money) {
-                        print("\nYou don't have enough money to make this bet\n", .{});
+                        print("\nYou don't have enough money to make that bet\n", .{});
                         continue;
                     }
                     print("\nYou've bet: $5\n", .{});
@@ -305,7 +305,7 @@ pub fn main() !void {
                 2 => blk: {
                     const r: u32 = 10;
                     if (r > player1.money) {
-                        print("\nYou don't have enough money to make this bet\n", .{});
+                        print("\nYou don't have enough money to make that bet\n", .{});
                         continue;
                     }
                     print("\nYou've bet: $10\n", .{});
@@ -314,7 +314,7 @@ pub fn main() !void {
                 3 => blk: {
                     const r: u32 = 25;
                     if (r > player1.money) {
-                        print("\nYou don't have enough money to make this bet\n", .{});
+                        print("\nYou don't have enough money to make that bet\n", .{});
                         continue;
                     }
                     print("\nYou've bet: $25\n", .{});
@@ -323,17 +323,17 @@ pub fn main() !void {
                 4 => blk: {
                     const r: u32 = 100;
                     if (r > player1.money) {
-                        print("\nYou don't have enough money to make this bet\n", .{});
+                        print("\nYou don't have enough money to make that bet\n", .{});
                         continue;
                     }
                     print("\nYou've bet: $100\n", .{});
                     break :blk r;
                 },
                 5 => blk: {
-                    //TODO allow for custom bets
-                    const r: u32 = bet_decision;
+                    print("What would you like to bet?\n", .{});
+                    const r: u32 = try ask_user_int(30, allocator);
                     if (r > player1.money) {
-                        print("\nYou don't have enough money to make this bet\n", .{});
+                        print("\nYou don't have enough money to make that bet\n", .{});
                         continue;
                     }
                     print("\nYou've bet: {d}\n", .{bet_decision});
@@ -354,6 +354,8 @@ pub fn main() !void {
             player1.print_hand();
             player1.money -= bet_amt;
 
+            var surrender = false;
+
             while (player1.get_hand_total() < 22) {
                 //TODO add the ability to split a hand
                 print("\nWhat would you like to do?\nHit - (1)  Double Down - (2)  Stand - (3)  Surrender - (4)\n", .{});
@@ -368,26 +370,38 @@ pub fn main() !void {
                         player1.print_hand();
                     },
                     2 => {
+                        if (bet_amt > player1.money) {
+                            print("You don't have enough money to double down\n\n", .{});
+                            continue;
+                        }
                         player1.money -= bet_amt;
                         bet_amt = bet_amt * 2;
+                        print("You've double downed\nYour new bet is ${d}\n", .{bet_amt});
                         player1.draw_card(&deck);
                         dealer.print_second_card();
                         player1.print_hand();
                         break;
                     },
                     3 => {
-                        print("You've choosen to stand\n\n", .{});
+                        print("You've choosen to stand\n", .{});
                         break;
                     },
                     4 => {
                         print("\nYou've choosen to Surrender", .{});
-                        player1.money += bet_amt / 2;
+                        surrender = true;
                         break;
                     },
                     else => {
                         print("\nNot a valid input", .{});
                     },
                 }
+            }
+
+            if (surrender) {
+                player1.money += bet_amt / 2;
+                player1.clear_hand();
+                dealer.clear_hand();
+                continue;
             }
 
             const p_hand_total: u32 = player1.get_hand_total();
@@ -429,19 +443,19 @@ pub fn main() !void {
             }
 
             if (p_hand_total > d_hand_total) {
-                print("You've won!\n", .{});
+                print("You've won!\n\n", .{});
                 player1.money += bet_amt * 2;
                 player1.clear_hand();
                 dealer.clear_hand();
                 continue;
             } else if (p_hand_total == d_hand_total) {
-                print("Push\n", .{});
+                print("Push\n\n", .{});
                 player1.money += bet_amt;
                 player1.clear_hand();
                 dealer.clear_hand();
                 continue;
             } else {
-                print("You've lost\n", .{});
+                print("You've lost\n\n", .{});
                 player1.money -= bet_amt;
                 player1.clear_hand();
                 dealer.clear_hand();
